@@ -1,0 +1,6 @@
+appname = rental_view
+httpport = 8090
+runmode = dev
+viewspath = views
+enablexsrf = false
+copyrequestbody = true
