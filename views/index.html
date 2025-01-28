@@ -77,14 +77,13 @@
             <h1 class="text-white text-3xl md:text-4xl font-bold mb-8">
                 RENT BY OWNER VACATION RENTALS ARE YOURS TO DISCOVER
             </h1>
-            <form class="flex justify-center space-x-4 mb-8" action="/property/list" method="GET"
-                onsubmit="return validateForm()">
-                <select id="destinationSelect" name="city_id" class="p-2 rounded" aria-label="Select Destination"
-                    required>
+            <form class="flex justify-center space-x-4 mb-8" onsubmit="return false;">
+                <select id="destinationSelect" name="city_id" class="p-2 rounded" aria-label="Select Destination" required>
                     <option value="">Select Destination</option>
                 </select>
-                <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" type="submit">Show Best
-                    Prices</button>
+                <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" type="submit">
+                    Show Best Prices
+                </button>
             </form>
             <!-- <form class="flex justify-center space-x-4 mb-8">
                 <select class="p-2 rounded" aria-label="Select Destination">
@@ -123,8 +122,9 @@
             </div>
         </div>
     </footer>
+    <script src="/static/js/destination-handler.js"></script>
 
-    <script>
+    <!-- <script>
 
         function validateForm() {
             const select = document.getElementById('destinationSelect');
@@ -176,87 +176,8 @@
             // Load cities when clicked
             destinationSelect.addEventListener('click', loadCities);
         });
-        // document.addEventListener('DOMContentLoaded', function () {
-        //     const destinationsMenu = document.getElementById("destinations-menu");
-        //     const dropdown = document.getElementById("dropdown");
-
-        //     if (!destinationsMenu || !dropdown) {
-        //         console.error("Could not find menu or dropdown elements");
-        //         return;
-        //     }
-
-        //     destinationsMenu.addEventListener("mouseenter", function (e) {
-        //         console.log("Mouse enter event triggered");
-        //         fetchDestinations(e);
-        //     });
-
-        //     destinationsMenu.addEventListener("click", function (e) {
-        //         console.log("Click event triggered");
-        //         fetchDestinations(e);
-        //     });
-
-        //     async function fetchDestinations(event) {
-        //         event.preventDefault();
-        //         console.log("Fetching destinations...");
-
-        //         const dropdown = document.getElementById("dropdown");
-        //         if (dropdown.children.length > 0) {
-        //             console.log("Dropdown already populated, showing it");
-        //             dropdown.style.display = "block";
-        //             return;
-        //         }
-
-        //         try {
-        //             console.log("Making API request to /destinations");
-        //             const response = await fetch("/destinations");
-        //             console.log("API Response status:", response.status);
-
-        //             if (!response.ok) {
-        //                 console.error("Failed to fetch destinations:", response.status);
-        //                 return;
-        //             }
-
-        //             const cities = await response.json();
-        //             console.log("Received cities:", cities);
-
-        //             if (cities && cities.length > 0) {
-        //                 dropdown.innerHTML = cities.map(city =>
-        //                     `<a href="#" class="dropdown-item">${city.city_name}</a>`
-        //                 ).join("");
-        //                 dropdown.style.display = "block";
-        //             } else {
-        //                 dropdown.innerHTML = "<p class='dropdown-item'>No destinations available</p>";
-        //                 dropdown.style.display = "block";
-        //             }
-        //         } catch (error) {
-        //             console.error("Error fetching destinations:", error);
-        //             dropdown.innerHTML = "<p class='dropdown-item'>Error loading destinations</p>";
-        //             dropdown.style.display = "block";
-        //         }
-        //     }
-
-        //     // Close dropdown when clicking outside
-        //     document.addEventListener("click", (e) => {
-        //         if (!dropdown.contains(e.target) && !destinationsMenu.contains(e.target)) {
-        //             console.log("Clicking outside, hiding dropdown");
-        //             dropdown.style.display = "none";
-        //         }
-        //     });
-
-        //     // Add hover out functionality
-        //     destinationsMenu.addEventListener("mouseleave", function (e) {
-        //         setTimeout(() => {
-        //             if (!dropdown.matches(':hover')) {
-        //                 dropdown.style.display = "none";
-        //             }
-        //         }, 100);
-        //     });
-
-        //     dropdown.addEventListener("mouseleave", function () {
-        //         dropdown.style.display = "none";
-        //     });
-        // });
-    </script>
+        
+    </script> -->
 </body>
 
 </html>

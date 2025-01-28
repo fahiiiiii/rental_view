@@ -1,19 +1,7 @@
-$(document).ready(function() {
-    // Initial load of properties
-    loadProperties();
-
-    // Handle property type filter change
-    $('#propertyType').on('change', function() {
-        loadProperties();
-    });
-});
-
-// In property.js
-function loadProperties() {
+async function loadProperties() {
     const urlParams = new URLSearchParams(window.location.search);
     const cityId = urlParams.get('city_id');
-    const propertyType = $('#propertyType').val();
-
+    
     if (!cityId) {
         $('#propertyContainer').html(
             '<div class="text-center p-4">' +
@@ -23,184 +11,273 @@ function loadProperties() {
         return;
     }
 
-    $.ajax({
-        url: '/v1/property/list',
-        method: 'GET',
-        data: {
-            city_id: encodeURIComponent(cityId),
-            property_type: propertyType
-        },
-        success: function(response) {
-            if (response.code === 200) {
-                if (response.data && response.data.length > 0) {
-                    displayProperties(response.data);
-                } else {
-                    $('#propertyContainer').html(
-                        '<div class="text-center p-4">' +
-                        '<p class="text-lg text-gray-600">No properties found for ' + cityId + '</p>' +
-                        '</div>'
-                    );
-                }
-            } else {
-                console.error('Error:', response.message);
-                $('#propertyContainer').html(
-                    '<div class="text-center p-4">' +
-                    '<p class="text-lg text-red-600">' + response.message + '</p>' +
-                    '</div>'
-                );
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error fetching properties:', error);
-            $('#propertyContainer').html(
-                '<div class="text-center p-4">' +
-                '<p class="text-lg text-red-600">Error loading properties. Please try again.</p>' +
-                '</div>'
-            );
+    try {
+        const response = await fetch(`http://localhost:8080/v1/property/list?city_id=${encodeURIComponent(cityId)}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            mode: 'cors',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        const data = await response.json();
+        
+        // Debugging: Print fetched data
+        console.log("Fetched data:", data);
+
+        if (!Array.isArray(data)) {
+            throw new Error("Invalid data format: Expected an array.");
+        }
+
+        // Transform the raw database data into the expected format
+        const transformedProperties = data.map(property => ({
+            property_id: property.propertyId,  // Convert propertyId -> property_id
+            name: property.name,
+            property_type: property.propertyType,  // Convert propertyType -> property_type
+            bedrooms: property.bedrooms,
+            bathrooms: property.bathrooms,
+            amenities: Array.isArray(property.amenities) 
+                ? property.amenities 
+                : JSON.parse(property.amenities || "[]"),  // Fix amenities parsing
+            image_urls: ['/static/images/default-property.jpg'], // default image
+            price: property.price || null,
+            review_score: property.review_score || null,
+            review_count: property.review_count || 0
+        }));
+
+        console.log("Transformed properties:", transformedProperties);
+
+        displayProperties(transformedProperties);
+    } catch (error) {
+        console.error('Error loading properties:', error);
+        $('#propertyContainer').html(
+            '<div class="text-center p-4">' +
+            `<p class="text-lg text-red-600">Error loading properties: ${error.message}</p>` +
+            '</div>'
+        );
+    }
+}
+
+
+// async function loadProperties() {
+//     const urlParams = new URLSearchParams(window.location.search);
+//     const cityId = urlParams.get('city_id');
+    
+//     if (!cityId) {
+//         $('#propertyContainer').html(
+//             '<div class="text-center p-4">' +
+//             '<p class="text-lg text-gray-600">Please select a destination</p>' +
+//             '</div>'
+//         );
+//         return;
+//     }
+
+//     try {
+//         const response = await fetch(`http://localhost:8080/v1/property/list?city_id=${encodeURIComponent(cityId)}`, {
+//             method: 'GET',
+//             headers: {
+//                 'Accept': 'application/json',
+//                 'Content-Type': 'application/json'
+//             },
+//             mode: 'cors',
+//             credentials: 'include'
+//         });
+        
+//         if (!response.ok) {
+//             throw new Error(`HTTP error! status: ${response.status}`);
+//         }
+
+//         const data = await response.json();
+        
+//         // Transform the raw database data into the expected format
+//         const transformedProperties = data.map(property => ({
+//             property_id: property.property_id,
+//             name: property.name,
+//             property_type: property.property_type,
+//             bedrooms: property.bedrooms,
+//             bathrooms: property.bathrooms,
+//             amenities: Array.isArray(property.amenities) 
+//                 ? property.amenities 
+//                 : JSON.parse(property.amenities),
+//             image_urls: ['/static/images/default-property.jpg'], // default image
+//             price: null,  // add if you have price data
+//             review_score: null, // add if you have review data
+//             review_count: 0 // add if you have review data
+//         }));
+
+//         displayProperties(transformedProperties);
+//     } catch (error) {
+//         console.error('Error loading properties:', error);
+//         $('#propertyContainer').html(
+//             '<div class="text-center p-4">' +
+//             `<p class="text-lg text-red-600">Error loading properties: ${error.message}</p>` +
+//             '</div>'
+//         );
+//     }
+// }
+
+function displayProperties(properties) {
+    const container = $('#propertyContainer');
+    container.empty();
+
+    if (properties.length === 0) {
+        container.html(
+            '<div class="text-center p-4">' +
+            '<p class="text-lg text-gray-600">No properties found for this location</p>' +
+            '</div>'
+        );
+        return;
+    }
+
+    properties.forEach(property => {
+        // Handle amenities - backend sends it as a string
+        let amenitiesList = [];
+        if (typeof property.amenities === 'string') {
+            amenitiesList = property.amenities.split(',').map(item => item.trim());
+        }
+
+        // Handle image URLs
+        const imageUrl = Array.isArray(property.image_urls) && property.image_urls.length > 0 
+            ? property.image_urls[0] 
+            : '/static/images/default-property.jpg';
+        
+        const propertyCard = `
+            <div class="property-card">
+                <div class="property-image-container">
+                    <img src="${imageUrl}" 
+                         alt="${property.name}" 
+                         class="property-image">
+                    ${property.price ? `<div class="price">AED ${property.price.toLocaleString()}</div>` : ''}
+                </div>
+                <div class="property-info">
+                    <h3>${property.name}</h3>
+                    ${property.review_score ? `
+                    <div class="rating">
+                        <span class="rating-number">${property.review_score}</span>
+                        <span>(${property.review_count} reviews)</span>
+                    </div>` : ''}
+                    <div class="amenities">
+                        ${amenitiesList.slice(0, 4).join(' • ')}
+                        ${amenitiesList.length > 4 ? ' • ...' : ''}
+                    </div>
+                    <div class="location">${property.property_type} • ${property.bedrooms} bedrooms</div>
+                    <button class="view-button" onclick="viewProperty('${property.property_id}')">View Availability</button>
+                </div>
+            </div>
+        `;
+        container.append(propertyCard);
     });
 }
-// // static/js/property.js
-
-// $(document).ready(function() {
-//     // Initial load of properties
-//     loadProperties();
-
-//     // Handle search form submission
-//     $('#searchForm').on('submit', function(e) {
-//         e.preventDefault();
-//         loadProperties();
-//     });
-// });
-
-// function loadProperties() {
-//     const cityId = $('#cityInput').val();
-//     const propertyType = $('#propertyType').val();
-
-//     $.ajax({
-//         url: '/v1/property/list',
-//         method: 'GET',
-//         data: {
-//             city_id: cityId,
-//             property_type: propertyType
-//         },
-//         success: function(response) {
-//             if (response.code === 200) {
-//                 displayProperties(response.data);
-//             } else {
-//                 console.error('Error:', response.message);
-//             }
-//         },
-//         error: function(xhr, status, error) {
-//             console.error('Error fetching properties:', error);
-//         }
-//     });
-// }
-
-// function displayProperties(properties) {
-//     const container = $('#propertyContainer');
-//     container.empty();
-
-//     properties.forEach(property => {
-//         const propertyCard = `
-//             <div class="property-card">
-//                 <div class="property-header">
-//                     <h3>${property.name}</h3>
-//                     <p>Property ID: ${property.property_id}</p>
-//                 </div>
-//                 <div class="property-details">
-//                     <p>Type: ${property.property_type}</p>
-//                     <p>Bedrooms: ${property.bedrooms}</p>
-//                     <p>Bathrooms: ${property.bathrooms}</p>
-//                 </div>
-//                 <div class="amenities">
-//                     <h4>Amenities:</h4>
-//                     <ul>
-//                         ${property.amenities.map(amenity => `<li>${amenity}</li>`).join('')}
-//                     </ul>
-//                 </div>
-//                 <button class="view-btn" onclick="viewProperty('${property.property_id}')">
-//                     View Availability
-//                 </button>
-//             </div>
-//         `;
-//         container.append(propertyCard);
-//     });
-// }
-
-// function viewProperty(propertyId) {
-//     // Handle view property action
-//     console.log('Viewing property:', propertyId);
-//     window.location.href = `/property/details?property_id=${propertyId}`;
-//     // Add your view property logic here
-// }
-// // function viewProperty(propertyId) {
-//     // window.location.href = `/property/details?property_id=${propertyId}`;
-
-// // }
 
 
-// // function fetchProperties() {
-// //     const cityInput = document.getElementById('cityInput');
-// //     const guestsInput = document.getElementById('guestsInput');
+function displayProperties(properties) {
+    const container = $('#propertyContainer');
+    container.empty();
 
-// //     // Fetch property data from the backend API
-// //     fetch(`/v1/property/list?city=${cityInput.value}&guests=${guestsInput.value}`)
-// //         .then(response => response.json())
-// //         .then(data => {
-// //             const propertyList = document.getElementById('propertyList');
-// //             propertyList.innerHTML = '';
+    if (properties.length === 0) {
+        container.html(
+            '<div class="text-center p-4">' +
+            '<p class="text-lg text-gray-600">No properties found for this location</p>' +
+            '</div>'
+        );
+        return;
+    }
 
-// //             data.forEach(property => {
-// //                 const card = document.createElement('div');
-// //                 card.className = 'property-card';
+    properties.forEach(property => {
+        // Check if amenities is a string and convert to array if needed
+        let amenitiesList = [];
+        if (typeof property.amenities === 'string') {
+            amenitiesList = property.amenities.split(',').map(item => item.trim());
+        } else if (Array.isArray(property.amenities)) {
+            amenitiesList = property.amenities;
+        }
+        
+        const propertyCard = `
+            <div class="property-card">
+                <div class="property-image-container">
+                    <img src="${property.image_urls?.[0] || '/static/images/default-property.jpg'}" 
+                         alt="${property.name}" 
+                         class="property-image">
+                    ${property.price ? `<div class="price">AED ${property.price.toLocaleString()}</div>` : ''}
+                </div>
+                <div class="property-info">
+                    <h3>${property.name}</h3>
+                    ${property.review_score ? `
+                    <div class="rating">
+                        <span class="rating-number">${property.review_score}</span>
+                        <span>(${property.review_count} reviews)</span>
+                    </div>` : ''}
+                    <div class="amenities">
+                        ${amenitiesList.slice(0, 4).join(' • ')}
+                        ${amenitiesList.length > 4 ? ' • ...' : ''}
+                    </div>
+                    <div class="location">${property.property_type} • ${property.bedrooms} bedrooms</div>
+                    <button class="view-button" onclick="viewProperty('${property.property_id}')">View Availability</button>
+                </div>
+            </div>
+        `;
+        container.append(propertyCard);
+    });
+}
 
-// //                 if (property.new) {
-// //                     const newBadge = document.createElement('div');
-// //                     newBadge.className = 'new-badge';
-// //                     newBadge.textContent = 'New';
-// //                     card.appendChild(newBadge);
-// //                 }
+// Add this function to handle property viewing
+function viewProperty(propertyId) {
+    // You can implement the property viewing logic here
+    console.log('Viewing property:', propertyId);
+    // For example:
+    // window.location.href = `/property/detail?id=${propertyId}`;
+}
 
-// //                 const img = document.createElement('img');
-// //                 img.src = property.image;
-// //                 img.alt = property.name;
-// //                 card.appendChild(img);
 
-// //                 const info = document.createElement('div');
-// //                 info.className = 'property-info';
+// Initialize on document ready
+$(document).ready(function() {
+    loadProperties();
+    
+    // Handle search button click
+    $('.search-button').click(function(e) {
+        e.preventDefault();
+        const searchInput = $('.search-input').val();
+        if (searchInput) {
+            // Refresh the page with the new search parameters
+            // You'll need to implement the logic to convert the search input to a city_id
+            console.log('Searching for:', searchInput);
+        }
+    });
+});
 
-// //                 const name = document.createElement('div');
-// //                 name.className = 'property-name';
-// //                 name.textContent = property.name;
-// //                 info.appendChild(name);
+// Initialize when document is ready
+$(document).ready(function() {
+    loadProperties();
+    
+    // Handle search form submission
+    $('.search-button').click(function(e) {
+        e.preventDefault();
+        const searchInput = $('.search-input').val();
+        
+        // Load cities data and find the matching city
+        fetch('/static/data/cities.json')
+            .then(response => response.json())
+            .then(cities => {
+                const city = cities.find(c => 
+                    `${c.city_name}, ${c.country}`.toLowerCase() === searchInput.toLowerCase()
+                );
+                
+                if (city) {
+                    window.location.href = `/property/list?city_id=${encodeURIComponent(city.city_id)}`;
+                } else {
+                    alert('City not found. Please select a valid destination.');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading cities:', error);
+                alert('Error loading cities. Please try again.');
+            });
+    });
+});
 
-// //                 const details = document.createElement('div');
-// //                 details.className = 'property-details';
-// //                 details.textContent = `${property.property_type} - ${property.bedrooms} Bedroom(s), ${property.bathrooms} Bathroom(s)`;
-// //                 info.appendChild(details);
-
-// //                 const amenities = document.createElement('div');
-// //                 amenities.className = 'amenities';
-// //                 amenities.textContent = `Amenities: ${property.amenities.join(', ')}`;
-// //                 info.appendChild(amenities);
-
-// //                 const price = document.createElement('div');
-// //                 price.className = 'price';
-// //                 price.textContent = `From ₹${property.price}`;
-// //                 info.appendChild(price);
-
-// //                 const button = document.createElement('a');
-// //                 button.className = 'button';
-// //                 button.href = `/property/${property.id}`;
-// //                 button.textContent = 'View Availability';
-// //                 info.appendChild(button);
-
-// //                 card.appendChild(info);
-// //                 propertyList.appendChild(card);
-// //             });
-// //         })
-// //         .catch(error => {
-// //             console.error('Error fetching properties:', error);
-// //         });
-// // }
